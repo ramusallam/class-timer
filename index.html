@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Class Timer</title>
+  <meta name="color-scheme" content="light">
+  <style>
+    :root {
+      --bg: #eef0f3;
+      --panel: #f7f8fa;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --blue: #1d4ed8;
+      --blue-soft: #dbeafe;
+      --red: #dc2626;
+      --red-soft: #fee2e2;
+      --border: #d1d5db;
+      --btn: #ffffff;
+      --btn-hover: #f3f4f6;
+      --btn-active: #2563eb;
+      --btn-active-ink: #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      gap: 48px;
+    }
+
+    /* ===== BIG TIME DISPLAY ===== */
+    .display {
+      font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+      font-weight: 700;
+      font-size: clamp(5rem, 22vw, 18rem);
+      line-height: 1;
+      letter-spacing: -0.03em;
+      color: var(--blue);
+      text-align: center;
+      user-select: none;
+      cursor: pointer;
+      transition: color 0.3s;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 1px 0 rgba(0,0,0,0.02);
+    }
+
+    .display.urgent {
+      color: var(--red);
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .display.done {
+      color: var(--red);
+      animation: flash 0.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.75; }
+    }
+
+    @keyframes flash {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.98); }
+    }
+
+    /* ===== INPUT MODE ===== */
+    .input-wrap {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      font-weight: 700;
+      font-size: clamp(4rem, 16vw, 13rem);
+      color: var(--blue);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .input-wrap.show { display: flex; }
+    .display.hide { display: none; }
+
+    .input-wrap input {
+      width: 2ch;
+      font: inherit;
+      color: inherit;
+      background: transparent;
+      border: none;
+      border-bottom: 4px solid var(--blue-soft);
+      text-align: center;
+      outline: none;
+      padding: 0;
+      caret-color: var(--blue);
+    }
+    .input-wrap input:focus { border-bottom-color: var(--blue); }
+    .input-wrap .sep { color: var(--muted); }
+
+    /* ===== CONTROLS ===== */
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      padding: 14px 28px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--btn);
+      color: var(--ink);
+      cursor: pointer;
+      transition: all 0.15s;
+      min-width: 110px;
+    }
+    button:hover { background: var(--btn-hover); transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    button.primary {
+      background: var(--btn-active);
+      color: var(--btn-active-ink);
+      border-color: var(--btn-active);
+    }
+    button.primary:hover { background: #1e40af; }
+    button.danger {
+      background: var(--btn);
+      color: var(--red);
+      border-color: var(--red);
+    }
+    button.danger:hover { background: var(--red-soft); }
+
+    /* ===== PRESETS ===== */
+    .presets {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .preset {
+      font-size: 0.95rem;
+      padding: 10px 18px;
+      min-width: 0;
+      border-radius: 10px;
+      color: var(--blue);
+      border-color: var(--blue-soft);
+      background: var(--panel);
+    }
+    .preset:hover { background: var(--blue-soft); }
+
+    /* ===== FULLSCREEN BUTTON ===== */
+    .fs-btn {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      min-width: 0;
+      border-radius: 8px;
+    }
+    .fs-btn:hover { color: var(--blue); }
+
+    /* ===== HINT ===== */
+    .hint {
+      position: fixed;
+      bottom: 16px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      letter-spacing: 0.02em;
+    }
+
+    @media (max-width: 600px) {
+      body { gap: 32px; padding: 20px 16px; }
+      .hint { display: none; }
+    }
+
+    /* ===== FULLSCREEN ===== */
+    :fullscreen { background: var(--bg); }
+    :fullscreen body { padding: 0; }
+    :fullscreen .fs-btn, :fullscreen .hint { display: none; }
+  </style>
+</head>
+<body>
+
+  <button class="fs-btn" id="fs" aria-label="Toggle fullscreen">⛶ Fullscreen</button>
+
+  <!-- Display (clickable to edit) -->
+  <div id="display" class="display" role="timer" aria-live="polite" title="Click to edit">00:00:00</div>
+
+  <!-- Input mode (shown when editing) -->
+  <div id="input" class="input-wrap" aria-hidden="true">
+    <input id="ih" type="text" inputmode="numeric" maxlength="2" value="00" aria-label="Hours">
+    <span class="sep">:</span>
+    <input id="im" type="text" inputmode="numeric" maxlength="2" value="00" aria-label="Minutes">
+    <span class="sep">:</span>
+    <input id="is" type="text" inputmode="numeric" maxlength="2" value="00" aria-label="Seconds">
+  </div>
+
+  <!-- Preset buttons -->
+  <div class="presets" id="presets">
+    <button class="preset" data-sec="60">1 min</button>
+    <button class="preset" data-sec="180">3 min</button>
+    <button class="preset" data-sec="300">5 min</button>
+    <button class="preset" data-sec="600">10 min</button>
+    <button class="preset" data-sec="900">15 min</button>
+    <button class="preset" data-sec="1200">20 min</button>
+    <button class="preset" data-sec="1800">30 min</button>
+    <button class="preset" data-sec="2700">45 min</button>
+    <button class="preset" data-sec="3600">1 hr</button>
+  </div>
+
+  <!-- Main controls -->
+  <div class="controls">
+    <button id="start" class="primary">Start</button>
+    <button id="reset" class="danger">Reset</button>
+  </div>
+
+  <div class="hint">Click the clock to set a time · Space = start/pause · R = reset · F = fullscreen</div>
+
+<script>
+  // ===== State =====
+  const LS_KEY = 'class-timer-last-seconds';
+  let totalSeconds = 300;            // default: 5 min
+  let remaining = totalSeconds;
+  let running = false;
+  let tickRef = null;
+  let targetTime = null;              // ms timestamp when the timer should hit zero
+  let editing = false;
+  let audioCtx = null;
+
+  // Load last-used duration
+  try {
+    const saved = parseInt(localStorage.getItem(LS_KEY), 10);
+    if (saved && saved > 0) { totalSeconds = saved; remaining = saved; }
+  } catch(e) {}
+
+  // ===== Elements =====
+  const display = document.getElementById('display');
+  const inputWrap = document.getElementById('input');
+  const ih = document.getElementById('ih');
+  const im = document.getElementById('im');
+  const is = document.getElementById('is');
+  const startBtn = document.getElementById('start');
+  const resetBtn = document.getElementById('reset');
+  const fsBtn = document.getElementById('fs');
+
+  // ===== Render =====
+  function pad(n) { return String(Math.max(0, Math.floor(n))).padStart(2, '0'); }
+  function render() {
+    const h = Math.floor(remaining / 3600);
+    const m = Math.floor((remaining % 3600) / 60);
+    const s = Math.floor(remaining % 60);
+    display.textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+    display.classList.toggle('urgent', running && remaining > 0 && remaining <= 60);
+    display.classList.toggle('done', remaining === 0 && !running);
+    document.title = running ? `${pad(h)}:${pad(m)}:${pad(s)} — Class Timer` : 'Class Timer';
+  }
+
+  // ===== Tick loop (uses absolute target time, robust to tab sleep) =====
+  function tick() {
+    if (!running) return;
+    const now = performance.now();
+    const delta = Math.max(0, (targetTime - now) / 1000);
+    remaining = Math.ceil(delta);
+    if (remaining <= 0) {
+      remaining = 0;
+      running = false;
+      render();
+      startBtn.textContent = 'Start';
+      playDone();
+      return;
+    }
+    render();
+    tickRef = setTimeout(tick, 200);  // refresh 5x/sec for smooth countdown
+  }
+
+  // ===== Sound =====
+  function ensureAudio() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+    }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  function beep(freq, start, dur, vol = 0.2) {
+    if (!audioCtx) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0, audioCtx.currentTime + start);
+    g.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + start + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + start + dur);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(audioCtx.currentTime + start);
+    o.stop(audioCtx.currentTime + start + dur + 0.02);
+  }
+  function playDone() {
+    ensureAudio();
+    if (!audioCtx) return;
+    // Gentle rising triad: A5 - C#6 - E6
+    beep(880, 0.00, 0.30);
+    beep(1108.73, 0.32, 0.30);
+    beep(1318.51, 0.64, 0.50);
+    // Second pass softer
+    beep(880, 1.30, 0.25, 0.12);
+    beep(1318.51, 1.55, 0.40, 0.12);
+  }
+
+  // ===== Controls =====
+  function start() {
+    if (editing) { commitEdit(); }
+    if (remaining <= 0) { remaining = totalSeconds; }
+    if (remaining <= 0) return;
+    ensureAudio();
+    running = true;
+    targetTime = performance.now() + remaining * 1000;
+    startBtn.textContent = 'Pause';
+    tick();
+  }
+  function pause() {
+    running = false;
+    if (tickRef) clearTimeout(tickRef);
+    startBtn.textContent = 'Start';
+    render();
+  }
+  function reset() {
+    pause();
+    remaining = totalSeconds;
+    render();
+  }
+  function setTotal(seconds, autoStart = false) {
+    totalSeconds = Math.max(0, seconds);
+    remaining = totalSeconds;
+    try { localStorage.setItem(LS_KEY, String(totalSeconds)); } catch(e) {}
+    render();
+    if (autoStart) start();
+  }
+
+  startBtn.addEventListener('click', () => { running ? pause() : start(); });
+  resetBtn.addEventListener('click', reset);
+
+  // Preset buttons
+  document.querySelectorAll('.preset').forEach(b => {
+    b.addEventListener('click', () => {
+      pause();
+      setTotal(parseInt(b.dataset.sec, 10), false);
+    });
+  });
+
+  // ===== Editing the display =====
+  function beginEdit() {
+    if (running) pause();
+    editing = true;
+    const h = Math.floor(remaining / 3600);
+    const m = Math.floor((remaining % 3600) / 60);
+    const s = Math.floor(remaining % 60);
+    ih.value = pad(h);
+    im.value = pad(m);
+    is.value = pad(s);
+    display.classList.add('hide');
+    inputWrap.classList.add('show');
+    inputWrap.setAttribute('aria-hidden', 'false');
+    const first = (h > 0) ? ih : (m > 0 ? im : is);
+    first.focus();
+    first.select();
+  }
+  function commitEdit() {
+    if (!editing) return;
+    const h = Math.max(0, Math.min(99, parseInt(ih.value || '0', 10)));
+    const m = Math.max(0, Math.min(59, parseInt(im.value || '0', 10)));
+    const s = Math.max(0, Math.min(59, parseInt(is.value || '0', 10)));
+    const total = h * 3600 + m * 60 + s;
+    editing = false;
+    inputWrap.classList.remove('show');
+    inputWrap.setAttribute('aria-hidden', 'true');
+    display.classList.remove('hide');
+    setTotal(total, false);
+  }
+  display.addEventListener('click', beginEdit);
+
+  // Auto-advance on 2 digits typed; allow Enter to commit, Escape to cancel
+  [ih, im, is].forEach((el, idx, arr) => {
+    el.addEventListener('input', () => {
+      el.value = el.value.replace(/[^0-9]/g, '').slice(0, 2);
+      if (el.value.length === 2 && idx < arr.length - 1) arr[idx + 1].focus();
+    });
+    el.addEventListener('focus', () => el.select());
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { commitEdit(); }
+      else if (e.key === 'Escape') { editing = false; inputWrap.classList.remove('show'); display.classList.remove('hide'); render(); }
+      else if (e.key === 'Backspace' && el.value.length === 0 && idx > 0) { arr[idx - 1].focus(); }
+    });
+  });
+
+  // ===== Fullscreen =====
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen).call(document.documentElement);
+    } else {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    }
+  }
+  fsBtn.addEventListener('click', toggleFullscreen);
+
+  // ===== Keyboard shortcuts =====
+  document.addEventListener('keydown', (e) => {
+    if (editing) return;
+    if (e.code === 'Space') { e.preventDefault(); running ? pause() : start(); }
+    else if (e.key === 'r' || e.key === 'R') { reset(); }
+    else if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); }
+  });
+
+  // Initial paint
+  render();
+</script>
+</body>
+</html>
