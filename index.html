@@ -246,6 +246,7 @@
   let targetTime = null;              // ms timestamp when the timer should hit zero
   let editing = false;
   let audioCtx = null;
+  let chimeInterval = null;           // id for looping chime after time is up
 
   // Load last-used duration
   try {
@@ -313,20 +314,27 @@
     o.start(audioCtx.currentTime + start);
     o.stop(audioCtx.currentTime + start + dur + 0.02);
   }
-  function playDone() {
+  function playChime() {
     ensureAudio();
     if (!audioCtx) return;
     // Gentle rising triad: A5 - C#6 - E6
     beep(880, 0.00, 0.30);
     beep(1108.73, 0.32, 0.30);
     beep(1318.51, 0.64, 0.50);
-    // Second pass softer
-    beep(880, 1.30, 0.25, 0.12);
-    beep(1318.51, 1.55, 0.40, 0.12);
+  }
+  function playDone() {
+    stopDone();
+    playChime();
+    // Keep chiming until the user hits Reset (or Start to begin a new timer)
+    chimeInterval = setInterval(playChime, 2600);
+  }
+  function stopDone() {
+    if (chimeInterval) { clearInterval(chimeInterval); chimeInterval = null; }
   }
 
   // ===== Controls =====
   function start() {
+    stopDone();                       // silence chime if we're restarting
     if (editing) { commitEdit(); }
     if (remaining <= 0) { remaining = totalSeconds; }
     if (remaining <= 0) return;
@@ -343,6 +351,7 @@
     render();
   }
   function reset() {
+    stopDone();                       // silence chime
     pause();
     remaining = totalSeconds;
     render();
